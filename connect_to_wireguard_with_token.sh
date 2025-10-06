@@ -154,14 +154,15 @@ if [[ $PIA_DNS == "true" ]]; then
     # Get current default DNS server (backup current resolv.conf)
     defaultDnsServer=$(grep -m1 "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}')
     
-    # Get the default interface before VPN connection
+    # Get the default interface and gateway before VPN connection
     defaultInterface=$(ip route | awk '/default/ {print $5}' | head -1)
+    defaultGateway=$(ip route | awk '/default/ {print $3}' | head -1)
     
     if [[ -n "$defaultDnsServer" ]]; then
       dnsSettingForVPN="DNS = $dnsServer
 
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
-PostUp = ip route add 10.43.0.0/16 dev $defaultInterface table main
+PostUp = ip route add 10.43.0.0/16 via $defaultGateway dev $defaultInterface table main
 PostUp = ip rule add to 10.43.0.0/16 table main priority 100
 PostUp = iptables -I OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT
 PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
@@ -177,7 +178,7 @@ PostUp = echo \"options ndots:5\" >> /etc/resolv.conf
 
 PreDown = killall dnsmasq 2>/dev/null || true
 PreDown = ip rule del to 10.43.0.0/16 table main priority 100 2>/dev/null || true
-PreDown = ip route del 10.43.0.0/16 dev $defaultInterface table main 2>/dev/null || true
+PreDown = ip route del 10.43.0.0/16 via $defaultGateway dev $defaultInterface table main 2>/dev/null || true
 PreDown = iptables -D OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT 2>/dev/null || true
 PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true"
     else
