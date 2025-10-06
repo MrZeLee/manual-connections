@@ -162,6 +162,7 @@ if [[ $PIA_DNS == "true" ]]; then
 
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
 PostUp = ip route add 10.43.0.0/16 dev $defaultInterface
+PostUp = iptables -I OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT
 PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
 PostUp = echo \"listen-address=127.0.0.1\" >> /tmp/dnsmasq.conf
 PostUp = echo \"bind-interfaces\" >> /tmp/dnsmasq.conf
@@ -175,6 +176,7 @@ PostUp = echo \"options ndots:5\" >> /etc/resolv.conf
 
 PreDown = killall dnsmasq 2>/dev/null || true
 PreDown = ip route del 10.43.0.0/16 2>/dev/null || true
+PreDown = iptables -D OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT 2>/dev/null || true
 PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true"
     else
       echo "defaultDnsServer not found, using standard DNS configuration..."
