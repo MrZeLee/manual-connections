@@ -154,11 +154,14 @@ if [[ $PIA_DNS == "true" ]]; then
     # Get current default DNS server (backup current resolv.conf)
     defaultDnsServer=$(grep -m1 "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}')
     
+    # Get the default interface before VPN connection
+    defaultInterface=$(ip route | awk '/default/ {print $5}' | head -1)
+    
     if [[ -n "$defaultDnsServer" ]]; then
       dnsSettingForVPN="DNS = $dnsServer
 
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
-PostUp = ip route add 10.43.0.0/16 dev \$\$(ip route | grep -v pia | awk '/default/ {print \$\$5}' | head -1)
+PostUp = ip route add 10.43.0.0/16 dev $defaultInterface
 PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
 PostUp = echo \"listen-address=127.0.0.1\" >> /tmp/dnsmasq.conf
 PostUp = echo \"bind-interfaces\" >> /tmp/dnsmasq.conf
