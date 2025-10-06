@@ -158,7 +158,7 @@ if [[ $PIA_DNS == "true" ]]; then
       dnsSettingForVPN="DNS = $dnsServer
 
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
-PostUp = ip route add 10.43.0.0/16 dev \$(ip route | grep -v pia | awk '/default/ {print \$5}' | head -1)
+PostUp = ip route add 10.43.0.0/16 dev \$\$(ip route | grep -v pia | awk '/default/ {print \$\$5}' | head -1)
 PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
 PostUp = echo \"listen-address=127.0.0.1\" >> /tmp/dnsmasq.conf
 PostUp = echo \"bind-interfaces\" >> /tmp/dnsmasq.conf
