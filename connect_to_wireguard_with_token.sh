@@ -146,8 +146,35 @@ if [[ $PIA_DNS == "true" ]]; then
   echo "Trying to set up DNS to $dnsServer. In case you do not have resolvconf,"
   echo "this operation will fail and you will not get a VPN. If you have issues,"
   echo "start this script without PIA_DNS."
-  echo
-  dnsSettingForVPN="DNS = $dnsServer"
+  
+  # Check if dnsmasq is available
+  if command -v dnsmasq >/dev/null 2>&1; then
+    echo "dnsmasq found, configuring advanced DNS setup..."
+    
+    # Get current default DNS server (backup current resolv.conf)
+    defaultDnsServer=$(grep -m1 "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}')
+    
+    if [[ -n "$defaultDnsServer" ]]; then
+      dnsSettingForVPN="DNS = $dnsServer
+
+PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
+PostUp = echo \"listen-address=127.0.0.1\" >> /tmp/dnsmasq.conf
+PostUp = echo \"bind-interfaces\" >> /tmp/dnsmasq.conf
+PostUp = echo \"server=/cluster.local/$defaultDnsServer\" >> /tmp/dnsmasq.conf
+PostUp = echo \"server=/svc.cluster.local/$defaultDnsServer\" >> /tmp/dnsmasq.conf
+PostUp = echo \"server=$dnsServer\" >> /tmp/dnsmasq.conf
+PostUp = dnsmasq -C /tmp/dnsmasq.conf
+PostUp = echo \"nameserver 127.0.0.1\" > /etc/resolv.conf
+
+PreDown = killall dnsmasq 2>/dev/null || true"
+    else
+      echo "defaultDnsServer not found, using standard DNS configuration..."
+      dnsSettingForVPN="DNS = $dnsServer"
+    fi
+  else
+    echo "dnsmasq not found, using standard DNS configuration..."
+    dnsSettingForVPN="DNS = $dnsServer"
+  fi
 fi
 echo -n "Trying to write ${PIA_CONF_PATH}..."
 mkdir -p "$(dirname "$PIA_CONF_PATH")"
