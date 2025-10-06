@@ -161,7 +161,8 @@ if [[ $PIA_DNS == "true" ]]; then
       dnsSettingForVPN="DNS = $dnsServer
 
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
-PostUp = ip route add 10.43.0.0/16 dev $defaultInterface
+PostUp = ip route add 10.43.0.0/16 dev $defaultInterface table main
+PostUp = ip rule add to 10.43.0.0/16 table main priority 100
 PostUp = iptables -I OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT
 PostUp = echo \"no-resolv\" > /tmp/dnsmasq.conf
 PostUp = echo \"listen-address=127.0.0.1\" >> /tmp/dnsmasq.conf
@@ -175,7 +176,8 @@ PostUp = echo \"nameserver 127.0.0.1\" >> /etc/resolv.conf
 PostUp = echo \"options ndots:5\" >> /etc/resolv.conf
 
 PreDown = killall dnsmasq 2>/dev/null || true
-PreDown = ip route del 10.43.0.0/16 2>/dev/null || true
+PreDown = ip rule del to 10.43.0.0/16 table main priority 100 2>/dev/null || true
+PreDown = ip route del 10.43.0.0/16 dev $defaultInterface table main 2>/dev/null || true
 PreDown = iptables -D OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT 2>/dev/null || true
 PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true"
     else
