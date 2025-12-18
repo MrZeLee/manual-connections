@@ -39,9 +39,9 @@ check_tool jq jq
 if [[ -t 1 ]]; then
   ncolors=$(tput colors)
   if [[ -n $ncolors && $ncolors -ge 8 ]]; then
-    red=$(tput setaf 1) # ANSI red
+    red=$(tput setaf 1)   # ANSI red
     green=$(tput setaf 2) # ANSI green
-    nc=$(tput sgr0) # No Color
+    nc=$(tput sgr0)       # No Color
   else
     red=''
     green=''
@@ -60,8 +60,7 @@ DEFAULT_PIA_CONF_PATH=/etc/wireguard/pia.conf
 # first check if this is the case.
 if [[ -f /proc/net/if_inet6 ]] &&
   [[ $(sysctl -n net.ipv6.conf.all.disable_ipv6) -ne 1 ||
-     $(sysctl -n net.ipv6.conf.default.disable_ipv6) -ne 1 ]]
-then
+  $(sysctl -n net.ipv6.conf.default.disable_ipv6) -ne 1 ]]; then
   echo -e "${red}You should consider disabling IPv6 by running:"
   echo "sysctl -w net.ipv6.conf.all.disable_ipv6=1"
   echo -e "sysctl -w net.ipv6.conf.default.disable_ipv6=1${nc}"
@@ -69,8 +68,8 @@ fi
 
 # Check if the mandatory environment variables are set.
 if [[ -z $WG_SERVER_IP ||
-      -z $WG_HOSTNAME ||
-      -z $PIA_TOKEN ]]; then
+  -z $WG_HOSTNAME ||
+  -z $PIA_TOKEN ]]; then
   echo -e "${red}This script requires 3 env vars:"
   echo "WG_SERVER_IP - IP that you want to connect to"
   echo "WG_HOSTNAME  - name of the server, required for ssl"
@@ -90,7 +89,7 @@ fi
 # Create ephemeral wireguard keys, that we don't need to save to disk.
 privKey=$(wg genkey)
 export privKey
-pubKey=$( echo "$privKey" | wg pubkey)
+pubKey=$(echo "$privKey" | wg pubkey)
 export pubKey
 
 # Authenticate via the PIA WireGuard RESTful API.
@@ -106,14 +105,14 @@ if [[ -z $DIP_TOKEN ]]; then
     --cacert "ca.rsa.4096.crt" \
     --data-urlencode "pt=${PIA_TOKEN}" \
     --data-urlencode "pubkey=$pubKey" \
-    "https://${WG_HOSTNAME}:1337/addKey" )"
+    "https://${WG_HOSTNAME}:1337/addKey")"
 else
   wireguard_json="$(curl -s -G \
     --connect-to "$WG_HOSTNAME::$WG_SERVER_IP:" \
     --cacert "ca.rsa.4096.crt" \
     --user "dedicated_ip_$DIP_TOKEN:$WG_SERVER_IP" \
     --data-urlencode "pubkey=$pubKey" \
-    "https://$WG_HOSTNAME:1337/addKey" )"
+    "https://$WG_HOSTNAME:1337/addKey")"
 fi
 export wireguard_json
 
@@ -146,18 +145,18 @@ if [[ $PIA_DNS == "true" ]]; then
   echo "Trying to set up DNS to $dnsServer. In case you do not have resolvconf,"
   echo "this operation will fail and you will not get a VPN. If you have issues,"
   echo "start this script without PIA_DNS."
-  
+
   # Check if dnsmasq is available
   if command -v dnsmasq >/dev/null 2>&1; then
     echo "dnsmasq found, configuring advanced DNS setup..."
-    
+
     # Get current default DNS server (backup current resolv.conf)
     defaultDnsServer=$(grep -m1 "^nameserver" /etc/resolv.conf 2>/dev/null | awk '{print $2}')
-    
+
     # Get the default interface and gateway before VPN connection
     defaultInterface=$(ip route | awk '/default/ {print $5}' | head -1)
     defaultGateway=$(ip route | awk '/default/ {print $3}' | head -1)
-    
+
     if [[ -n "$defaultDnsServer" ]]; then
       dnsSettingForVPN="DNS = $dnsServer
 
@@ -175,12 +174,14 @@ PostUp = dnsmasq -C /tmp/dnsmasq.conf
 PostUp = echo \"search media-server.svc.cluster.local svc.cluster.local cluster.local\" > /etc/resolv.conf
 PostUp = echo \"nameserver 127.0.0.1\" >> /etc/resolv.conf
 PostUp = echo \"options ndots:5\" >> /etc/resolv.conf
+PostUp = resolvconf -u
 
 PreDown = killall dnsmasq 2>/dev/null || true
 PreDown = ip rule del to 10.43.0.0/16 table main priority 100 2>/dev/null || true
 PreDown = ip route del 10.43.0.0/16 via $defaultGateway dev $defaultInterface table main 2>/dev/null || true
 PreDown = iptables -D OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT 2>/dev/null || true
-PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true"
+PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true
+PreDown = resolvconf -u"
     else
       echo "defaultDnsServer not found, using standard DNS configuration..."
       dnsSettingForVPN="DNS = $dnsServer"
@@ -202,9 +203,8 @@ PersistentKeepalive = 25
 PublicKey = $(echo "$wireguard_json" | jq -r '.server_key')
 AllowedIPs = 0.0.0.0/0
 Endpoint = ${WG_SERVER_IP}:$(echo "$wireguard_json" | jq -r '.server_port')
-" > ${PIA_CONF_PATH} || exit 1
+" >${PIA_CONF_PATH} || exit 1
 echo -e "${green}OK!${nc}"
-
 
 if [[ $PIA_CONNECT == "true" ]]; then
   # Start the WireGuard interface.
