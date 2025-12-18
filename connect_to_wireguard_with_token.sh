@@ -158,8 +158,10 @@ if [[ $PIA_DNS == "true" ]]; then
     defaultGateway=$(ip route | awk '/default/ {print $3}' | head -1)
 
     if [[ -n "$defaultDnsServer" ]]; then
-      dnsSettingForVPN="DNS = $dnsServer
-
+      # Note: We don't set DNS= here because wg-quick would try to use resolvconf,
+      # which fails on systems with signature-protected /etc/resolv.conf.
+      # Instead, we handle DNS entirely in PostUp via dnsmasq.
+      dnsSettingForVPN="
 PostUp = cp /etc/resolv.conf /tmp/resolv.conf.backup
 PostUp = ip route add 10.43.0.0/16 via $defaultGateway dev $defaultInterface table main
 PostUp = ip rule add to 10.43.0.0/16 table main priority 100
@@ -174,14 +176,12 @@ PostUp = dnsmasq -C /tmp/dnsmasq.conf
 PostUp = echo \"search media-server.svc.cluster.local svc.cluster.local cluster.local\" > /etc/resolv.conf
 PostUp = echo \"nameserver 127.0.0.1\" >> /etc/resolv.conf
 PostUp = echo \"options ndots:5\" >> /etc/resolv.conf
-PostUp = resolvconf -u
 
 PreDown = killall dnsmasq 2>/dev/null || true
 PreDown = ip rule del to 10.43.0.0/16 table main priority 100 2>/dev/null || true
 PreDown = ip route del 10.43.0.0/16 via $defaultGateway dev $defaultInterface table main 2>/dev/null || true
 PreDown = iptables -D OUTPUT -d 10.43.0.0/16 -o $defaultInterface -j ACCEPT 2>/dev/null || true
-PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true
-PreDown = resolvconf -u"
+PreDown = cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null || true"
     else
       echo "defaultDnsServer not found, using standard DNS configuration..."
       dnsSettingForVPN="DNS = $dnsServer"
