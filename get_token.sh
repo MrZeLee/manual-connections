@@ -74,17 +74,25 @@ generateTokenResponse=$(curl -s --location --request POST \
   --form "username=$PIA_USER" \
   --form "password=$PIA_PASS" )
 
-if [ "$(echo "$generateTokenResponse" | jq -r '.token')" == "" ]; then
+if [ -z "$generateTokenResponse" ]; then
+  echo
+  echo
+  echo -e "${red}Could not reach the PIA API (network/DNS failure)!${nc}"
+  echo
+  exit 1
+fi
+
+token=$(echo "$generateTokenResponse" | jq -r '.token // empty')
+if [ -z "$token" ] || [ "$token" == "null" ]; then
   echo
   echo
   echo -e "${red}Could not authenticate with the login credentials provided!${nc}"
   echo
-  exit
+  exit 1
 fi
 
 echo -e "${green}OK!"
 echo
-token=$(echo "$generateTokenResponse" | jq -r '.token')
 tokenExpiration=$(timeout_timestamp)
 tokenLocation=/opt/piavpn-manual/token
 echo -e "PIA_TOKEN=$token${nc}"

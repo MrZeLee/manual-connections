@@ -43,6 +43,20 @@ if (( EUID != 0 )); then
   exit 1
 fi
 
+# Reset any stale VPN state from a previous run: a dead 'pia' tunnel keeps
+# hijacking the default route (and DNS keeps pointing at resolvers only
+# reachable through it), which would make every API call below fail with a
+# misleading "could not authenticate" error.
+if ip link show pia &>/dev/null; then
+  echo "Stale 'pia' interface found - tearing it down first..."
+  wg-quick down pia 2>/dev/null || {
+    ip link del pia 2>/dev/null
+    killall dnsmasq 2>/dev/null
+    cp /tmp/resolv.conf.backup /etc/resolv.conf 2>/dev/null
+    true
+  }
+fi
+
 # Erase previous authentication token if present
 rm -f /opt/piavpn-manual/token /opt/piavpn-manual/latencyList
 
